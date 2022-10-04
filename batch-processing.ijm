@@ -8,6 +8,9 @@
 #@ Integer (label="AB max. Size:") ab_max_size
 #@ Integer (label="Maxima Prominence >", style="slider", min=0, max=30, stepSize=1) prominence
 
+dirResults = replace(dirResults, "\\", "/");
+dirFiles = replace(dirFiles, "\\", "/");
+
 list = getFileList(dirFiles);
 run("Set Measurements...", "area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack limit display invert add nan redirect=None decimal=3");
 
@@ -58,6 +61,8 @@ function abcount(channelKerne, channelAB, promValue, nuclei_size, minsize, maxsi
 	run("Clear Results");
 	Array.show("Results (row numbers)", data_filenames, data_nuclei, data_antibodies);
 	updateResults();
+//	saveAs("results", dirResults + "/" + result_name + ".csv");
+	Table.save(dirResults + "/" + result_name + ".csv");
 }
 
 function minsizefilter(minimum_size) {
