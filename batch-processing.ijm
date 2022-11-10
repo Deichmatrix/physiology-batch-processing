@@ -4,11 +4,12 @@
 #@ String (choices={"AB count", "Intensity", "Orientation"}, style="listBox", description="<html><ul><li>AB count: Z&auml;hlt im ausgew&auml;hlten Kanal die Antik&ouml;per.</li><li>Intensity: Misst die Intensity &uuml;ber den Zellkernen.</li><li>Orientation: Filtert und misst Orientation.</li></ul></html>") messmodus
 #@ String (label="Kanal Nuclei", choices={"blue", "green", "red"}, style="listBox", value="blue") channel_nuclei
 #@ String (label="Kanal Marker", choices={"blue", "green", "red"}, style="listBox", value="green") channel_marker
-#@ String (visibility=MESSAGE, value="<html><hr />&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp; <br> <h2>Optionen AB-count</h2></html>") docmsg
+//#@ String (visibility=MESSAGE, value="<html><hr />&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp; <br> <h2>Optionen AB-count</h2></html>") docmsg
 #@ Integer (label="Nuclei min. Size (µm²):", value="20", description="Partikel, die kleiner als die angegebene Fläche sind, werden herausgefiltert.") nuclei_min_size
-#@ Integer (label="AB min. Size:") ab_min_size
-#@ Integer (label="AB max. Size:") ab_max_size
-#@ Integer (label="Maxima Prominence >", style="slider", min=0, max=30, stepSize=1) prominence
+#@ String (label="Beobachtungsmodus:", choices={"AN", "AUS"}, style="radioButtonHorizontal", value="AUS", description="Wenn der Beobachtungsmodus aktiviert wird, werden die einzelnen Bearbeitungsschritte zur Kontrolle angezeigt, die Bearbeitung ist langsamer.") batchmode_toggle
+//#@ Integer (label="AB min. Size:") ab_min_size
+//#@ Integer (label="AB max. Size:") ab_max_size
+//#@ Integer (label="Maxima Prominence >", style="slider", min=0, max=30, stepSize=1) prominence
 
 dirResults = replace(dirResults, "\\", "/");
 dirFiles = replace(dirFiles, "\\", "/");
@@ -67,6 +68,7 @@ function intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size,
 //		roiManager("Add");
 		roiManager("show none")
 		roiManager("Select", nucleus_number);
+		wait(1000);
 //		waitForUser;
 		
 		data_intensities = Array.concat(data_intensities, getValue("Mean"));
