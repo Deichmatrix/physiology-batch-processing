@@ -1,42 +1,43 @@
-#@ File (label="Ordner Bilder:", style="directory", description="Wähle den Ordner, der die zu analysierenden Bilder enthält.", value="C:/users/labor") dirFiles
-#@ File (label="Ordner Ergebnisse:", style="directory", description="Wähle einen Ordner im dem die Ergebnisse gespeichert werden sollen.", value="C:/users/labor") dirResults
-#@ String (label="Name Ergebnisse", description="Name der Ergebnissdatei") result_name
-#@ String (choices={"AB count", "Intensity", "Orientation"}, style="listBox", description="<html><ul><li>AB count: Z&auml;hlt im ausgew&auml;hlten Kanal die Antik&ouml;per.</li><li>Intensity: Misst die Intensity &uuml;ber den Zellkernen.</li><li>Orientation: Filtert und misst Orientation.</li></ul></html>") messmodus
+#@ File (label="Ordner Bilder:", style="directory", description="Wähle den Ordner, der die zu analysierenden Bilder enthält.", value="C:/users/labor") image_directory
+#@ File (label="Ordner Ergebnisse:", style="directory", description="Wähle einen Ordner im dem die Ergebnisse gespeichert werden sollen.", value="C:/users/labor") results_directory
+#@ String (label="Name Ergebnisse", description="Name der Ergebnissdatei") filename_results
+#@ String (choices={"AB count", "Intensity (whole)", "Intensity (nuclei)", "Intensity (erythrocytes)", "Orientation"}, style="listBox", description="<html><ul><li>AB count: Z&auml;hlt im ausgew&auml;hlten Kanal die Antik&ouml;per.</li><li>Intensity: Misst die Intensity &uuml;ber den Zellkernen.</li><li>Orientation: Filtert und misst Orientation.</li></ul></html>") messmodus
 #@ String (label="Kanal Nuclei", choices={"blue", "green", "red"}, style="listBox", value="blue") channel_nuclei
 #@ String (label="Kanal Marker", choices={"blue", "green", "red"}, style="listBox", value="green") channel_marker
 //#@ String (visibility=MESSAGE, value="<html><hr />&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp; <br> <h2>Optionen AB-count</h2></html>") docmsg
 #@ Integer (label="Nuclei min. Size (µm²):", value="20", description="Partikel, die kleiner als die angegebene Fläche sind, werden herausgefiltert.") nuclei_min_size
 #@ String (label="Beobachtungsmodus:", choices={"AN", "AUS"}, style="radioButtonHorizontal", value="AUS", description="Wenn der Beobachtungsmodus aktiviert wird, werden die einzelnen Bearbeitungsschritte zur Kontrolle angezeigt, die Bearbeitung ist langsamer.") batchmode_toggle
-//#@ Integer (label="AB min. Size:") ab_min_size
-//#@ Integer (label="AB max. Size:") ab_max_size
-//#@ Integer (label="Maxima Prominence >", style="slider", min=0, max=30, stepSize=1) prominence
+#@ String (visibility=MESSAGE, value="<html><hr />&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp; <br></html>") docmsg
+#@ File (label="Ordner Ilastik", style="directory", description="Wähle den Ordner, der die Ilastik-Programmdateien enthält.", value="C:/Program Files") ilastik_directory
+#@ File (label="Ilastik Project (.ilp)", style="file", description="Wähle die Ilastik-Projektdatei.", value="C:/users/labor") ilastik_project_filepath
 
-dirResults = replace(dirResults, "\\", "/");
-dirFiles = replace(dirFiles, "\\", "/");
+image_directory = replace(image_directory, "\\", "/");
+results_directory = replace(results_directory, "\\", "/");
+setBatchMode(set_batchmode_toggle(batchmode_toggle));
 
-list = getFileList(dirFiles);
+list = getFileList(image_directory);
 run("Set Measurements...", "area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack limit display invert add nan redirect=None decimal=3");
 
 if (messmodus == "AB count") {
-	abcount(channel_nuclei, channel_marker, prominence, nuclei_min_size, ab_min_size, ab_max_size, dirFiles, result_name);
-} else if (messmodus == "Intensity") {
-	intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size, dirFiles, result_name);
+	abcount(channel_nuclei, channel_marker, nuclei_min_size, image_directory, results_directory, filename_results, ilastik_directory, ilastik_project_filepath)
+} else if (messmodus == "Intensity (nuclei)") {
+	intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size, image_directory, filename_results);
 } else if ( messmodus == "Orientation") {
 	print("Orientation");
 }
 
-function intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size, dirFiles, result_name) {
+function intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size, image_directory, filename_results) {
 	data_nuclei = newArray();
 	data_intensities = newArray();
 	data_areas = newArray();
 	data_filenames = newArray();
 	
-	setBatchMode(false);
-	
 	channel_to_close = select_unused_channel(channel_nuclei, channel_marker);
 	
+	print("Starting analysis of Intensity over nuclei. There are " + list.length + " images in the queue.");
+		
 	for (i=0; i<list.length; i++) {
-		open("" + dirFiles + "/" + list[i]);
+		open("" + image_directory + "/" + list[i]);
 		data_filenames = Array.concat(data_filenames,getInfo("image.filename"));
 		current_file = Image.title;
 		
@@ -54,47 +55,44 @@ function intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size,
 		
 		selectWindow(current_file + " (" + channel_marker + ")");
 		run("Clear Results");
-//		roiManager("show all");
-//		run("Select All");
 		nuclei_indexes = newArray(roiManager("count"));
 		for (j=0; j<nuclei_indexes.length; j++) {
 		 	nuclei_indexes[j] = j;
 		}
+		
 		roiManager("select", nuclei_indexes);
 		roiManager("Combine");
 		roiManager("Add");
-//		roiManager("Delete");
-//		waitForUser;
-//		roiManager("Add");
-		roiManager("show none")
+		roiManager("show none");
 		roiManager("Select", nucleus_number);
-		wait(1000);
-//		waitForUser;
 		
 		data_intensities = Array.concat(data_intensities, getValue("Mean"));
 		data_areas = Array.concat(data_areas, getValue("Area"));
 		print("> Bild " + (i+1) + " von " + list.length + " wurde ausgewertet.");
 		print("Ergebnisse: " + current_file + ", " + nucleus_number + ", " + getValue("Mean"));
 		close("*");
-//		wait(5000);
 	}
 	close("*");
 	run("Clear Results");
-	Array.show("Results (indexes)", data_filenames, data_nuclei, data_intensities, data_areas);
-	updateResults();
+	Array.show("Results", data_filenames, data_nuclei, data_intensities, data_areas);
+	Table.renameColumn("data_filenames", "Image Filename");
+	Table.renameColumn("data_nuclei", "Nuclei count");
+	Table.renameColumn("data_intensities", "Intensities");
+	Table.renameColumn("data_areas", "Area of Nuclei (µm²)");
+	Table.save(results_directory + "/" + filename_results + ".csv");
 }
 
-function abcount(channelKerne, channelAB, promValue, nuclei_size, minsize, maxsize, file_directory, file_name) { 
+function abcount(channel_nuclei, channel_marker, nuclei_size, image_directory, results_directory, filename_results, ilastik_directory, ilastik_project_filepath) { 
 	data_nuclei = newArray();
 	data_antibodies = newArray();
 	data_filenames = newArray();
 	
-	setBatchMode(false);
-	
 	channel_to_close = select_unused_channel(channel_nuclei, channel_marker);
 	
+	print("Starting counting of antibodies. There are " + list.length + " images in the queue.");
+	
 	for (i=0; i<list.length; i++) {
-		open("" + file_directory + "/" + list[i]);
+		open("" + image_directory + "/" + list[i]);
 		data_filenames = Array.concat(data_filenames,getInfo("image.filename"));
 		current_file = Image.title;
 
@@ -103,32 +101,26 @@ function abcount(channelKerne, channelAB, promValue, nuclei_size, minsize, maxsi
 
 		close(current_file + " (" + channel_to_close + ")");
 
-		selectWindow(current_file + " (" + channelKerne + ")");
+		selectWindow(current_file + " (" + channel_nuclei + ")");
 		
 		roiManager("reset");
-		run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + current_file + " (" + channelKerne + ")" + "', 'modelChoice':'Versatile (fluorescent nuclei)', 'normalizeInput':'true', 'percentileBottom':'1.0', 'percentileTop':'99.8', 'probThresh':'0.5', 'nmsThresh':'0.4', 'outputType':'Both', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
+		run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + current_file + " (" + channel_nuclei + ")" + "', 'modelChoice':'Versatile (fluorescent nuclei)', 'normalizeInput':'true', 'percentileBottom':'1.0', 'percentileTop':'99.8', 'probThresh':'0.5', 'nmsThresh':'0.4', 'outputType':'Both', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
 		
 		minsizefilter(nuclei_size);
 		nucleus_number = roiManager("count");
 		data_nuclei = Array.concat(data_nuclei,nucleus_number);
 		
-//		roiManager("reset");		
-//		selectWindow(current_file +  " (" + channelAB + ")");
-//		run("Find Maxima...", "prominence=" + promValue + " strict output=[Single Points]");
-//		run("Analyze Particles...", "size=" + minsize + "-" + maxsize + "clear include overlay add");
-//		ab_number = roiManager("count");
-//		data_antibodies = Array.concat(data_antibodies,ab_number);
-//	
-		selectWindow(current_file +  " (" + channelAB + ")");
-		newImage("black", "8-bit black", 1360, 1024, 1);
-		run("Merge Channels...", "c1=black c2=["+current_file +  " (" + channelAB + ")] c3=black create");
+		selectWindow(current_file + " (" + channel_marker + ")");
+		run("Size...", "width=850 height=640 depth=1 constrain interpolation=None");
+		
+		newImage("black", "8-bit black", 850, 640, 1);
+		run("Merge Channels...", "c1=black c2=["+current_file +  " (" + channel_marker + ")] c3=black create");
 		run("Stack to RGB");
 		close("Composite");
 		selectWindow("Composite (RGB)");
-		saveAs("Tiff", "C:/Users/labor/Documents/Composite_(RGB).tif");
+		saveAs("PNG", results_directory + "/Composite_(RGB).png");
 		
-		
-		ab_number = Ilastik_Processing("C:/Program Files/ilastik-1.4.0rc5", "C:/Users/labor/Desktop/erik_ab_snapshot.ilp", "C:/Users/labor/Documents/Composite_(RGB).tif", "C:/Users/labor/Documents/");
+		ab_number = Ilastik_Processing(ilastik_directory, ilastik_project_filepath, results_directory + "/Composite_(RGB).png", results_directory);
 		
 		print("Die von Ilastik gemessene AB-Zahl ist: " + ab_number);
 		
@@ -143,8 +135,7 @@ function abcount(channelKerne, channelAB, promValue, nuclei_size, minsize, maxsi
 	run("Clear Results");
 	Array.show("Results (row numbers)", data_filenames, data_nuclei, data_antibodies);
 	updateResults();
-//	saveAs("results", dirResults + "/" + result_name + ".csv");
-	Table.save(dirResults + "/" + result_name + ".csv");
+	Table.save(results_directory + "/" + filename_results + ".csv");
 }
 
 function intensity () {
@@ -183,30 +174,28 @@ function select_unused_channel(ch1, ch2) {
 
 }
 
-function Ilastik_Processing(IlastikDir, IlastikProject, IlastikInput, IlastikOutput) {
+function Ilastik_Processing(ilastik_program_directory, ilastik_project_filepath, ilastik_image_input, IlastikOutput) {
 		print("Performing Ilastik antibody count...");
-				
-		//Prepare text inputs for batch
+//		ilastik_directory, ilastik_project_filepath, results_directory + "/Composite_(RGB).png", results_directory		
+
 		q ="\"";
-		//inputI = replace(input, "\\", "/");
-		IlastikDir1 = replace(IlastikDir+"/ilastik.exe", "\\", "/");
-//		IlastikDir1 = q + IlastikDir1 + q;	
 		
-		print(IlastikDir1);
+		ilastik_program_directory = replace(ilastik_program_directory+"/run_ilastik.sh", "\\", "/");
 		
-		IlastikProject1 = replace(IlastikProject, "\\", "/");
-//		IlastikProject1 = q + IlastikProject1 + q;
+		ilastik_project_filepath = replace(ilastik_project_filepath, "\\", "/");
+//		ilastik_project_filepath1 = q + ilastik_project_filepath1 + q;
 	
-		IlastikOutDir = IlastikOutput;
-		IlastikOutDir = replace(IlastikOutDir, "\\", "/");
+//		IlastikOutDir = IlastikOutput;
+//		IlastikOutDir = replace(IlastikOutDir, "\\", "/");
+		ilastik_output_directory = q + replace(results_directory, "\\", "/") + "ilastik_temp_savefile.csv" + q;
 //		IlastikOutDir = q + IlastikOutDir + "ilastik_temp_savefile.csv" + q;
 
-		IlastikInput = IlastikInput;
+//		IlastikInput = IlastikInput;
 //		IlastikInput = q + IlastikInput + q;
 			
-		ilcommand = IlastikDir1 +" --headless --project="+IlastikProject1+" --csv-export-file=" + IlastikOutDir + " " + IlastikInput;
+		ilcommand = ilastik_program_directory +" --headless --project=" + ilastik_project_filepath + " --csv-export-file=" + ilastik_output_directory + " " + ilastik_image_input;
 		print(ilcommand);
-		
+		waitForUser;
 		// Create Batch and run
 		run("Text Window...", "name=Batch");
 		//print("[Batch]", "@echo off" + "\n");
@@ -238,3 +227,21 @@ function Ilastik_Processing(IlastikDir, IlastikProject, IlastikInput, IlastikOut
 		return ab_number;
 
 }
+
+function set_batchmode_toggle(batchmode_toggle) { 
+	if (batchmode_toggle == "AN") {
+		return false;
+	} else if (batchmode_toggle == "AUS") {
+		return true;
+	}
+}
+
+  function getBar(p1, p2) {
+        n = 20;
+        bar1 = "--------------------";
+        bar2 = "********************";
+        index = round(n*(p1/p2));
+        if (index<1) index = 1;
+        if (index>n-1) index = n-1;
+        return substring(bar2, 0, index) + substring(bar1, index+1, n);
+  }
