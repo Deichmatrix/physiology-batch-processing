@@ -19,9 +19,10 @@ list = getFileList(image_directory);
 run("Set Measurements...", "area mean standard modal min centroid center perimeter bounding fit shape feret's integrated median skewness kurtosis area_fraction stack limit display invert add nan redirect=None decimal=3");
 
 if (messmodus == "AB count") {
-	abcount(channel_nuclei, channel_marker, nuclei_min_size, image_directory, results_directory, filename_results, ilastik_directory, ilastik_project_filepath)
+	abcount(channel_nuclei, channel_marker, nuclei_min_size, image_directory, results_directory, filename_results, ilastik_directory, ilastik_project_filepath);
 } else if (messmodus == "Intensity (nuclei)") {
-	intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size, image_directory, filename_results);
+	intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size, image_directory, filename_results)
+;
 } else if ( messmodus == "Orientation") {
 	print("Orientation");
 }
@@ -83,7 +84,8 @@ function intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size,
 }
 
 function abcount(channel_nuclei, channel_marker, nuclei_size, image_directory, results_directory, filename_results, ilastik_directory, ilastik_project_filepath) { 
-	data_nuclei = newArray();
+
+	data_nuclei = newArray();
 	data_antibodies = newArray();
 	data_filenames = newArray();
 	
@@ -107,7 +109,7 @@ function abcount(channel_nuclei, channel_marker, nuclei_size, image_directory, r
 		run("Command From Macro", "command=[de.csbdresden.stardist.StarDist2D], args=['input':'" + current_file + " (" + channel_nuclei + ")" + "', 'modelChoice':'Versatile (fluorescent nuclei)', 'normalizeInput':'true', 'percentileBottom':'1.0', 'percentileTop':'99.8', 'probThresh':'0.5', 'nmsThresh':'0.4', 'outputType':'Both', 'nTiles':'1', 'excludeBoundary':'2', 'roiPosition':'Automatic', 'verbose':'false', 'showCsbdeepProgress':'false', 'showProbAndDist':'false'], process=[false]");
 		
 		minsizefilter(nuclei_size);
-		nucleus_number = roiManager("count");
+		nucleus_number = roiManager("count");
 		data_nuclei = Array.concat(data_nuclei,nucleus_number);
 		
 		selectWindow(current_file + " (" + channel_marker + ")");
@@ -118,15 +120,17 @@ function abcount(channel_nuclei, channel_marker, nuclei_size, image_directory, r
 		run("Stack to RGB");
 		close("Composite");
 		selectWindow("Composite (RGB)");
-		saveAs("PNG", results_directory + "/Composite_(RGB).png");
+		saveAs("PNG", results_directory + "/Composite_RGB.png");
 		
-		ab_number = Ilastik_Processing(ilastik_directory, ilastik_project_filepath, results_directory + "/Composite_(RGB).png", results_directory);
+		ab_number = Ilastik_Processing(ilastik_directory, ilastik_project_filepath, results_directory + "/Composite_RGB.png", results_directory);
 		
 		print("Die von Ilastik gemessene AB-Zahl ist: " + ab_number);
 		
-		close(current_file +  " (" + channelKerne + ")");
-		close(current_file +  " (" + channelAB + ")");	
-		close(current_file +  " (" + channelAB + ") Maxima");
+		data_antibodies = Array.concat(data_antibodies, ab_number);
+		
+		close(current_file +  " (" + channel_nuclei + ")");
+		close(current_file +  " (" + channel_marker + ")");	
+//		close(current_file +  " (" + channel_marker + ") Maxima");
 		
 		print("> Bild " + (i+1) + " von " + list.length + " wurde ausgewertet.");
 
@@ -174,11 +178,10 @@ function select_unused_channel(ch1, ch2) {
 
 }
 
-function Ilastik_Processing(ilastik_program_directory, ilastik_project_filepath, ilastik_image_input, IlastikOutput) {
+function Ilastik_Processing(ilastik_program_directory, ilastik_project_filepath, ilastik_image_input, results_directory) {
 		print("Performing Ilastik antibody count...");
-//		ilastik_directory, ilastik_project_filepath, results_directory + "/Composite_(RGB).png", results_directory		
 
-		q ="\"";
+		q ="/";
 		
 		ilastik_program_directory = replace(ilastik_program_directory+"/run_ilastik.sh", "\\", "/");
 		
@@ -187,7 +190,7 @@ function Ilastik_Processing(ilastik_program_directory, ilastik_project_filepath,
 	
 //		IlastikOutDir = IlastikOutput;
 //		IlastikOutDir = replace(IlastikOutDir, "\\", "/");
-		ilastik_output_directory = q + replace(results_directory, "\\", "/") + "ilastik_temp_savefile.csv" + q;
+		ilastik_output_directory = results_directory + q + "ilastik_temp_savefile.csv";
 //		IlastikOutDir = q + IlastikOutDir + "ilastik_temp_savefile.csv" + q;
 
 //		IlastikInput = IlastikInput;
@@ -195,35 +198,29 @@ function Ilastik_Processing(ilastik_program_directory, ilastik_project_filepath,
 			
 		ilcommand = ilastik_program_directory +" --headless --project=" + ilastik_project_filepath + " --csv-export-file=" + ilastik_output_directory + " " + ilastik_image_input;
 		print(ilcommand);
-		waitForUser;
+		
 		// Create Batch and run
-		run("Text Window...", "name=Batch");
+		run("Text Window...", "name=Shell");
 		//print("[Batch]", "@echo off" + "\n");
-		print("[Batch]", ilcommand);
-		run("Text...", "save=[C:/Users/labor/Documents/Ilastikrun.bat]");
-		selectWindow("Ilastikrun.bat");
+		print("[Shell]", "#! /bin/bash");
+		print("[Shell]", "\n" + ilcommand);
+		run("Text...", "save=[" + results_directory + "/Ilastikrun.sh]");
+		selectWindow("Ilastikrun.sh");
 		run("Close"); 
-		runilastik = "C:/Users/labor/Documents/Ilastikrun.bat";
-		runilastik = replace(runilastik, "\\", "/");
-//		runilastik = q + runilastik + q;
-		print(runilastik);
-		waitForUser;
+		
+		run_ilastik = results_directory + "/Ilastikrun.sh";
+		print(run_ilastik);
+		
+		exec("chmod", "+x", run_ilastik);
+		exec(run_ilastik);
 
-		exec(runilastik);
-
-		//Cleanup
-		File.delete("C:/Users/labor/Documents/Ilastikrun.bat");
+		File.delete(run_ilastik);
 		print("");
 		
-		file_contents = File.openAsString(IlastikOutDir);
+		file_contents = File.openAsString(ilastik_output_directory);
 		substr = split(file_contents, ",");
 		ab_number = parseFloat(substr[1]);
-//		
-//		open(IlastikOutDir);
-//		getResult("C2", 0);
-//		ab_number = getResult("C2", 0);	
 
-		print("Die gemessene AB-Zahl ist: " + ab_number);
 		return ab_number;
 
 }
