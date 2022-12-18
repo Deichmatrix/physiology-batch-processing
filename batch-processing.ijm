@@ -10,6 +10,7 @@
 #@ String (visibility=MESSAGE, value="<html><hr />&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp; <br></html>") docmsg
 #@ File (label="Ordner Ilastik", style="directory", description="Wähle den Ordner, der die Ilastik-Programmdateien enthält.", value="C:/Program Files") ilastik_directory
 #@ File (label="Ilastik Project (.ilp)", style="file", description="Wähle die Ilastik-Projektdatei.", value="C:/users/labor") ilastik_project_filepath
+#@ Boolean (label="Test") test
 
 image_directory = replace(image_directory, "\\", "/");
 results_directory = replace(results_directory, "\\", "/");
@@ -21,8 +22,7 @@ run("Set Measurements...", "area mean standard modal min centroid center perimet
 if (messmodus == "AB count") {
 	abcount(channel_nuclei, channel_marker, nuclei_min_size, image_directory, results_directory, filename_results, ilastik_directory, ilastik_project_filepath);
 } else if (messmodus == "Intensity (nuclei)") {
-	intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size, image_directory, filename_results)
-;
+	intensity_over_nucleus(channel_nuclei, channel_marker, nuclei_min_size, image_directory, filename_results);
 } else if ( messmodus == "Orientation") {
 	print("Orientation");
 }
@@ -122,7 +122,7 @@ function abcount(channel_nuclei, channel_marker, nuclei_size, image_directory, r
 		selectWindow("Composite (RGB)");
 		saveAs("PNG", results_directory + "/Composite_RGB.png");
 		
-		ab_number = Ilastik_Processing(ilastik_directory, ilastik_project_filepath, results_directory + "/Composite_RGB.png", results_directory);
+		ab_number = Ilastik_Processing_Windows(ilastik_directory, ilastik_project_filepath, results_directory + "/Composite_RGB.png", results_directory);
 		
 		print("Die von Ilastik gemessene AB-Zahl ist: " + ab_number);
 		
@@ -144,6 +144,13 @@ function abcount(channel_nuclei, channel_marker, nuclei_size, image_directory, r
 
 function intensity () {
 	
+}
+
+function orientation(image_directory, results_directory, filename_results, channel_marker) { 
+	for (i=0, i<list.length, i++) {
+		open("" + image_directory + "/" + list[i]);
+		
+	}
 }
 
 function minsizefilter(minimum_size) {
@@ -184,17 +191,8 @@ function Ilastik_Processing(ilastik_program_directory, ilastik_project_filepath,
 		q ="/";
 		
 		ilastik_program_directory = replace(ilastik_program_directory+"/run_ilastik.sh", "\\", "/");
-		
 		ilastik_project_filepath = replace(ilastik_project_filepath, "\\", "/");
-//		ilastik_project_filepath1 = q + ilastik_project_filepath1 + q;
-	
-//		IlastikOutDir = IlastikOutput;
-//		IlastikOutDir = replace(IlastikOutDir, "\\", "/");
 		ilastik_output_directory = results_directory + q + "ilastik_temp_savefile.csv";
-//		IlastikOutDir = q + IlastikOutDir + "ilastik_temp_savefile.csv" + q;
-
-//		IlastikInput = IlastikInput;
-//		IlastikInput = q + IlastikInput + q;
 			
 		ilcommand = ilastik_program_directory +" --headless --project=" + ilastik_project_filepath + " --csv-export-file=" + ilastik_output_directory + " " + ilastik_image_input;
 		print(ilcommand);
@@ -223,6 +221,42 @@ function Ilastik_Processing(ilastik_program_directory, ilastik_project_filepath,
 
 		return ab_number;
 
+}
+
+function Ilastik_Processing_Windows(ilastik_program_directory, ilastik_project_filepath, ilastik_image_input, results_directory) {
+		print("Performing Ilastik antibody count...");
+
+		q ="/";
+		
+		ilastik_program_directory = replace(ilastik_program_directory+"/ilastik.exe", "\\", "/");
+		ilastik_project_filepath = replace(ilastik_project_filepath, "\\", "/");
+		ilastik_output_directory = results_directory + q + "ilastik_temp_savefile.csv";
+	
+		ilcommand = "\"" + ilastik_program_directory +"\" --headless --project=\"" + ilastik_project_filepath + "\" --csv-export-file=\"" + ilastik_output_directory + "\" \"" + ilastik_image_input + "\"";
+		print(ilcommand);
+		waitForUser;
+		// Create Batch and run
+		run("Text Window...", "name=Batch");
+		//print("[Batch]", "@echo off" + "\n");
+		print("[Batch]", ilcommand);
+		run("Text...", "save=[" + results_directory + "/Ilastikrun.bat]");
+		selectWindow("Ilastikrun.bat");
+		run("Close"); 
+		
+		run_ilastik = results_directory + "/Ilastikrun.bat";
+		print(run_ilastik);
+		
+		exec("cmd", "/c", run_ilastik);
+		exec(run_ilastik);
+
+//		File.delete(run_ilastik);
+		print("");
+		
+		file_contents = File.openAsString(ilastik_output_directory);
+		substr = split(file_contents, ",");
+		ab_number = parseFloat(substr[1]);
+
+		return ab_number;
 }
 
 function set_batchmode_toggle(batchmode_toggle) { 
