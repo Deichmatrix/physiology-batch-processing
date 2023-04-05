@@ -20,7 +20,7 @@ Das Macro ist auf Github unter https://github.com/Deichmatrix/physiology-batch-p
 
 Um das Macro zu starten, wird in der Menüleiste von Fiji `Plugins -> Macros -> Edit...` angeklickt und die zuvor heruntergeladene Macro-Datei ausgewählt. Im neu geöffneten Fenster sollte im Menü bei `Language` die Option `ImageJ Macro` ausgewählt sein. Dann kann man unten links auf den `Run` Button klicken und das folgende Fenster sollte erscheinen:
 
-![GUI des Macros](/docs/MacroGUI.png)
+![GUI des Macros](docs/MacroGUI.PNG)
 
 ### Nutzeroberfläche
 
