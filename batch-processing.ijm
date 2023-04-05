@@ -10,7 +10,7 @@
 #@ String (visibility=MESSAGE, value="<html><hr />&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp; <br></html>") docmsg
 #@ File (label="Ordner Ilastik", style="directory", description="Wähle den Ordner, der die Ilastik-Programmdateien enthält.", value="C:/Program Files") ilastik_directory
 #@ File (label="Ilastik Project (.ilp)", style="file", description="Wähle die Ilastik-Projektdatei.", value="C:/users/labor") ilastik_project_filepath
-#@ Boolean (label="Test") test
+//#@ Boolean (label="Test") test
 
 image_directory = replace(image_directory, "\\", "/");
 results_directory = replace(results_directory, "\\", "/");
